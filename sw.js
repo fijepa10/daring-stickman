@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ragdoll-v8';
+const CACHE_NAME = 'ragdoll-v9';
 const ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png',
   './bounce.mp3', './death1.mp3', './death2.mp3', './death3.mp3',
   './wind.mp3', './ding.mp3', './boing.mp3', './upgrade.mp3', './music.mp3',

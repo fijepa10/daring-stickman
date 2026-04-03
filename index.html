@@ -1710,106 +1710,168 @@ function promptUsername() {
 }
 
 function drawSettingsScreen() {
-  const cx = canvas.width / 2;
-  const left = Math.max(20, cx - 160);
-  const sliderW = Math.min(320, canvas.width - 40);
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const compact = h < 500;
+
+  // Two-column layout on wide screens, single column on narrow
+  const wideLayout = w > 600 && compact;
 
   // Back button
-  addButtonOutline('BACK', 50, 30, 70, 30, () => { menuState = 'main'; saveSettings(); });
+  addButtonOutline('BACK', 50, 25, 60, 26, () => { menuState = 'main'; saveSettings(); });
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#000'; ctx.font = `bold ${MOBILE ? 22 : 28}px Gothica, monospace`;
-  ctx.fillText('SETTINGS', cx, 75);
+  ctx.fillStyle = '#000'; ctx.font = `bold ${compact ? 18 : 28}px Gothica, monospace`;
+  ctx.fillText('SETTINGS', cx, compact ? 35 : 55);
 
-  let y = 100;
-  const gap = 42;
+  if (wideLayout) {
+    // === Wide landscape: sliders on left, face picker + preview on right ===
+    const colW = w * 0.45;
+    const leftX = w * 0.05;
+    const rightX = w * 0.52;
+    const sliderW = colW;
+    let y = 60;
+    const gap = Math.min(35, (h - 80) / 6);
 
-  drawSlider('THICK', left, y, sliderW, settings.thickness, 2, 8, 'thickness'); y += gap;
-  drawSlider('STIFF', left, y, sliderW, settings.stiffness, 0.15, 0.8, 'stiffness'); y += gap;
-  drawSlider('VIGNETTE', left, y, sliderW, settings.vignetteStrength, 0, 2, 'vignetteStrength'); y += gap;
-  drawSlider('MUSIC', left, y, sliderW, settings.musicVolume, 0, 1, 'musicVolume'); y += gap;
-  drawSlider('SFX', left, y, sliderW, settings.sfxVolume, 0, 1, 'sfxVolume'); y += gap + 15;
+    drawSlider('THICK', leftX, y, sliderW, settings.thickness, 2, 8, 'thickness'); y += gap;
+    drawSlider('STIFF', leftX, y, sliderW, settings.stiffness, 0.15, 0.8, 'stiffness'); y += gap;
+    drawSlider('VIGNETTE', leftX, y, sliderW, settings.vignetteStrength, 0, 2, 'vignetteStrength'); y += gap;
+    drawSlider('MUSIC', leftX, y, sliderW, settings.musicVolume, 0, 1, 'musicVolume'); y += gap;
+    drawSlider('SFX', leftX, y, sliderW, settings.sfxVolume, 0, 1, 'sfxVolume');
 
-  // Face style picker
-  ctx.fillStyle = '#000'; ctx.font = '12px Gothica, monospace'; ctx.textAlign = 'center';
-  ctx.fillText('FACE STYLE', cx, y);
-  y += 14;
-  const faces = ['dots', 'cool', 'happy', 'angry'];
-  const faceLabels = ['Classic', 'Cool', 'Happy', 'Angry'];
-  const totalW = Math.min(280, canvas.width - 40);
-  const faceLeft = cx - totalW / 2;
-  const fw = totalW / faces.length;
-  const faceH = 70;
-  for (let i = 0; i < faces.length; i++) {
-    const fx = faceLeft + i * fw + fw / 2;
-    const selected = settings.faceStyle === faces[i];
-    if (selected) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(fx - fw/2 + 3, y, fw - 6, faceH);
+    // Face picker on right
+    const faces = ['dots', 'cool', 'happy', 'angry'];
+    const faceLabels = ['Classic', 'Cool', 'Happy', 'Angry'];
+    const faceAreaW = colW;
+    const fw = faceAreaW / faces.length;
+    const faceH = Math.min(55, (h - 120) * 0.4);
+    let fy = 65;
+    ctx.fillStyle = '#000'; ctx.font = '11px Gothica, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('FACE', rightX + faceAreaW / 2, fy - 5);
+    for (let i = 0; i < faces.length; i++) {
+      const fx = rightX + i * fw + fw / 2;
+      const selected = settings.faceStyle === faces[i];
+      if (selected) { ctx.fillStyle = '#000'; ctx.fillRect(fx - fw/2 + 2, fy, fw - 4, faceH); }
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      ctx.strokeRect(fx - fw/2 + 2, fy, fw - 4, faceH);
+      ctx.fillStyle = selected ? '#fff' : '#000';
+      ctx.font = '8px Gothica, monospace'; ctx.textAlign = 'center';
+      ctx.fillText(faceLabels[i], fx, fy + faceH - 4);
+      const fi = faces[i];
+      menuButtons.push({ label: fi, x: fx - fw/2 + 2, y: fy, w: fw - 4, h: faceH, action: () => { settings.faceStyle = fi; saveSettings(); } });
+      const oldFace = settings.faceStyle; settings.faceStyle = faces[i];
+      drawStickmanPreview(fx, fy + faceH * 0.4, 3, selected ? 2 : 1.5);
+      settings.faceStyle = oldFace;
     }
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-    ctx.strokeRect(fx - fw/2 + 3, y, fw - 6, faceH);
-    // Label at the bottom
-    ctx.fillStyle = selected ? '#fff' : '#000';
-    ctx.font = '9px Gothica, monospace'; ctx.textAlign = 'center';
-    ctx.fillText(faceLabels[i], fx, y + faceH - 6);
-    const fi = faces[i];
-    menuButtons.push({ label: fi, x: fx - fw/2 + 3, y, w: fw - 6, h: faceH, action: () => { settings.faceStyle = fi; saveSettings(); } });
-    // Mini stickman preview centered in the box (above the label)
-    const oldFace = settings.faceStyle;
-    settings.faceStyle = faces[i];
-    drawStickmanPreview(fx, y + 28, 4, selected ? 2.5 : 2);
-    settings.faceStyle = oldFace;
-  }
-  y += faceH + 30;
+    // Preview below face picker
+    const prevY = fy + faceH + 15;
+    drawStickmanPreview(rightX + faceAreaW / 2, prevY + 10, Math.min(10, (h - prevY - 20) / 4));
 
-  // Live preview - larger
-  ctx.fillStyle = '#000'; ctx.font = '12px Gothica, monospace'; ctx.textAlign = 'center';
-  ctx.fillText('PREVIEW', cx, y);
-  drawStickmanPreview(cx, y + 45, 12);
+  } else {
+    // === Portrait / tall layout: single column, scale gaps to fit ===
+    const totalItems = 8; // 5 sliders + face label + face row + preview
+    const topPad = compact ? 50 : 70;
+    const botPad = 15;
+    const available = h - topPad - botPad;
+    const gap = Math.min(40, available / totalItems);
+    const left = Math.max(20, cx - 160);
+    const sliderW = Math.min(320, w - 40);
+
+    let y = topPad;
+    drawSlider('THICK', left, y, sliderW, settings.thickness, 2, 8, 'thickness'); y += gap;
+    drawSlider('STIFF', left, y, sliderW, settings.stiffness, 0.15, 0.8, 'stiffness'); y += gap;
+    drawSlider('VIGNETTE', left, y, sliderW, settings.vignetteStrength, 0, 2, 'vignetteStrength'); y += gap;
+    drawSlider('MUSIC', left, y, sliderW, settings.musicVolume, 0, 1, 'musicVolume'); y += gap;
+    drawSlider('SFX', left, y, sliderW, settings.sfxVolume, 0, 1, 'sfxVolume'); y += gap;
+
+    // Face style
+    ctx.fillStyle = '#000'; ctx.font = '11px Gothica, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('FACE STYLE', cx, y); y += 12;
+    const faces = ['dots', 'cool', 'happy', 'angry'];
+    const faceLabels = ['Classic', 'Cool', 'Happy', 'Angry'];
+    const totalFW = Math.min(260, w - 30);
+    const faceLeft = cx - totalFW / 2;
+    const fw = totalFW / faces.length;
+    const faceH = Math.min(55, gap * 1.4);
+    for (let i = 0; i < faces.length; i++) {
+      const fx = faceLeft + i * fw + fw / 2;
+      const selected = settings.faceStyle === faces[i];
+      if (selected) { ctx.fillStyle = '#000'; ctx.fillRect(fx - fw/2 + 2, y, fw - 4, faceH); }
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      ctx.strokeRect(fx - fw/2 + 2, y, fw - 4, faceH);
+      ctx.fillStyle = selected ? '#fff' : '#000';
+      ctx.font = '8px Gothica, monospace'; ctx.textAlign = 'center';
+      ctx.fillText(faceLabels[i], fx, y + faceH - 4);
+      const fi = faces[i];
+      menuButtons.push({ label: fi, x: fx - fw/2 + 2, y, w: fw - 4, h: faceH, action: () => { settings.faceStyle = fi; saveSettings(); } });
+      const oldFace = settings.faceStyle; settings.faceStyle = faces[i];
+      drawStickmanPreview(fx, y + faceH * 0.4, 3, selected ? 2 : 1.5);
+      settings.faceStyle = oldFace;
+    }
+    y += faceH + 10;
+
+    // Preview only if space remains
+    if (y + 40 < h) {
+      ctx.fillStyle = '#000'; ctx.font = '10px Gothica, monospace'; ctx.textAlign = 'center';
+      ctx.fillText('PREVIEW', cx, y);
+      const prevSz = Math.min(10, (h - y - 15) / 4);
+      drawStickmanPreview(cx, y + 20, prevSz);
+    }
+  }
 }
 
 function drawLeaderboardScreen() {
-  const cx = canvas.width / 2;
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const compact = h < 500;
+  const titleSz = compact ? 18 : 32;
 
   // Back button top-left
-  addButtonOutline('BACK', 50, 30, 70, 30, () => { menuState = 'main'; });
+  addButtonOutline('BACK', 50, 25, 60, 26, () => { menuState = 'main'; });
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#000'; ctx.font = `bold ${MOBILE ? 24 : 32}px Gothica, monospace`;
-  ctx.fillText('LEADERBOARD', cx, 80);
+  ctx.fillStyle = '#000'; ctx.font = `bold ${titleSz}px Gothica, monospace`;
+  ctx.fillText('LEADERBOARD', cx, compact ? 35 : 60);
+
+  const startY = compact ? 55 : 90;
+  const bottomY = h - (compact ? 25 : 40);
+  const rowSpace = Math.min(28, (bottomY - startY - 20) / 11);
 
   if (leaderboard.length === 0) {
-    ctx.fillStyle = '#aaa'; ctx.font = '16px Gothica, monospace';
-    ctx.fillText('No scores yet!', cx, 130);
-    ctx.fillText('Play a game to get on the board', cx, 155);
+    ctx.fillStyle = '#aaa'; ctx.font = `${compact ? 12 : 16}px Gothica, monospace`;
+    ctx.fillText('No scores yet!', cx, startY + 30);
   } else {
     ctx.textAlign = 'left';
     const left = Math.max(20, cx - 140);
-    const right = Math.min(canvas.width - 20, cx + 140);
-    let y = 115;
+    const right = Math.min(w - 20, cx + 140);
+    let y = startY;
+    const fontSize = compact ? 12 : 15;
     for (let i = 0; i < Math.min(10, leaderboard.length); i++) {
+      if (y + rowSpace > bottomY) break;
       const e = leaderboard[i];
       const isMe = e.name === settings.username;
       ctx.fillStyle = isMe ? '#000' : '#555';
-      ctx.font = isMe ? 'bold 15px Gothica, monospace' : '15px Gothica, monospace';
+      ctx.font = isMe ? `bold ${fontSize}px Gothica, monospace` : `${fontSize}px Gothica, monospace`;
       ctx.textAlign = 'left';
       ctx.fillText(`${i + 1}. ${e.name}`, left, y);
       ctx.textAlign = 'right';
       ctx.fillText(`${e.score}`, right, y);
-      y += 28;
+      y += rowSpace;
     }
   }
 
   // Your rank + best
   ctx.textAlign = 'center';
+  const rankFontSz = compact ? 10 : 14;
   if (highScore > 0) {
     const myRank = getWorldRank(highScore);
-    ctx.fillStyle = '#000'; ctx.font = 'bold 14px Gothica, monospace';
-    ctx.fillText(`Your rank: #${myRank}  \u2022  Best: ${highScore}`, cx, canvas.height - 30);
+    ctx.fillStyle = '#000'; ctx.font = `bold ${rankFontSz}px Gothica, monospace`;
+    ctx.fillText(`#${myRank}  \u2022  Best: ${highScore}`, cx, bottomY + 12);
   } else {
-    ctx.fillStyle = '#999'; ctx.font = '13px Gothica, monospace';
-    ctx.fillText('Play a game to get ranked!', cx, canvas.height - 30);
+    ctx.fillStyle = '#999'; ctx.font = `${rankFontSz}px Gothica, monospace`;
+    ctx.fillText('Play a game to get ranked!', cx, bottomY + 12);
   }
 }
 
